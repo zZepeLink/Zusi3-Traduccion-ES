@@ -1,0 +1,191 @@
+﻿<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Zusi</title>
+   <style type="text/css">
+    body {background: white; color: black; font-family:Verdana, sans-serif;}
+    h1 {font-size: 2.5em; color:#060}
+    h2 {font-size: 2.0em; color:#080}
+    p {padding: 10px; margin-bottom: 0px; margin-top: 0px}
+    .buttonBlue a {background: #5382AC;}
+    .buttonWhite a {background: #DDD;}
+    .buttonWhite a:hover, .buttonWhite a:focus {background: #5382AC;}
+    .button a
+    {
+      font-family: sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 16px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: .54em 1.1em;
+      border-radius: 3px;
+      display: inline-block;
+      box-sizing: border-box;
+      position: relative;
+      margin: 0;
+      list-style: none;
+      border: 0;
+      outline: 0;
+    }
+    .buttonWhite a {color: #000;}
+    .buttonWhite a:hover, .buttonWhite a:focus {color: #fff;}
+    .buttonBlue a {color: #fff;}
+    .buttonBlue a:hover, .buttonBlue a:focus {color: #000;}
+    div { color: black } /*Disable Link Color*/
+    @media (prefers-color-scheme: dark) {
+    body {background: black; color: white}
+    div { color: white }
+    }
+   </style>
+</head>
+
+<body>
+<table border="0" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+        <td class="button buttonWhite"><div><a href="zurueck">Zurück</a></div></td>
+        <td class="button buttonBlue" align="center"><div><a href="starten">Starten</a></div></td>
+        <td class="button buttonWhite" align="right"><div><a href="vor">Weiter</a></div></td>
+    </tr>
+</table>
+<hr/>
+<p>@TEXT@</p>
+<!--@ZUSISTARTINSTALLIERT@-->
+<script type="module">
+  /* IE sollte den script-Block vom Typ module ignorieren. */
+  function parseTimeString(timeStr) {
+    const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds);
+  }
+  var fpl = document.getElementsByName("fahrplan")[0];
+  var table = fpl.nextElementSibling;
+  if (table == null)
+    table = fpl.firstElementChild; /* JS kann u.U. dafür sorgen, dass das <a ein Knoten ist, obwohl es geschlossen wurde. */
+  var row1 = table.firstElementChild;
+  if (row1.localName == "tbody")
+    row1 = row1.firstElementChild;
+  var row2 = row1.nextElementSibling;
+  var zusiDef1 = table.nextElementSibling;
+  var zusiDef2 = zusiDef1.nextElementSibling;
+  if (row1 == null || row1.localName != "zusidef")
+    zusiDef2 = zusiDef1.firstElementChild;
+  var fplStart1 = parseTimeString(zusiDef1.getAttribute("anfang"));
+  var fplEnde1 = parseTimeString(zusiDef2.getAttribute("ende"));
+  if (fplEnde1 < fplStart1)
+    fplEnde1.setDate(fplEnde1.getDate() + 1);
+  var zugStart1 = null;
+  var zugEnde1 = null;
+  var zeitstrahl = document.querySelectorAll("img")[0];
+  var dataRow = row2.nextElementSibling;
+  while(dataRow) {
+    var arrive1 = dataRow.querySelectorAll("td")[1].textContent.trim();
+    var depart1 = dataRow.querySelectorAll("td")[2].textContent.trim();
+    if (zugStart1 == null && arrive1 != "")
+      zugStart1 = parseTimeString(arrive1);
+    if (zugStart1 == null && depart1 != "")
+      zugStart1 = parseTimeString(depart1);
+    if (arrive1 != "")
+      zugEnde1 = parseTimeString(arrive1);
+    if (depart1 != "")
+      zugEnde1 = parseTimeString(depart1);
+    dataRow = dataRow.nextElementSibling;
+  }
+  if (zugStart1 < fplStart1)
+    zugStart1.setDate(zugStart1.getDate() + 1);
+  if (zugEnde1 < fplStart1)
+    zugEnde1.setDate(zugEnde1.getDate() + 1);
+  
+  /* Region Drawing */
+  const zeitstrahl2 = document.createElement("div");
+  {
+    zeitstrahl2.style.width = "100%";
+    zeitstrahl2.style.height = "5em";
+    zeitstrahl2.style.position = "relative";
+    zeitstrahl.replaceWith(zeitstrahl2);
+  }
+  function createOverlayRect(start, end, background)
+  {
+    var overlayRect = document.createElement("div");
+    overlayRect.style.position = "absolute";
+    const fplDur = fplEnde1.getTime() - fplStart1.getTime();
+    var leftFl = (start.getTime() - fplStart1.getTime()) / fplDur * 100;
+    var widthFl = (end.getTime() - start.getTime()) / fplDur * 100;
+    overlayRect.style.left = leftFl + "%";
+    overlayRect.style.width = widthFl + "%";
+    overlayRect.style.height = "1.5em";
+    overlayRect.style.background = background;
+    zeitstrahl2.appendChild(overlayRect);
+  }
+  createOverlayRect(fplStart1, fplEnde1, "silver");
+  createOverlayRect(zugStart1, zugEnde1, "lime");
+  
+  function createOverlayText(time, posHint)
+  {
+    /* Create rotated text */
+    const rotatedText = document.createElement("div");
+    rotatedText.textContent = time.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    rotatedText.style.position = "absolute";
+    rotatedText.style.fontWeight = "bold";
+    rotatedText.style.fontFamily = "Arial, sans-serif";
+    rotatedText.style.fontSize = "0.9em";
+    if (posHint == -1)
+      rotatedText.style.left = "0em";
+    else if (posHint == 1)
+      rotatedText.style.right = "0em";
+    else
+    {
+      const fplDur = fplEnde1.getTime() - fplStart1.getTime();
+      var leftFl = (time.getTime() - fplStart1.getTime()) / fplDur * 100;
+      rotatedText.style.left = leftFl + "%";
+    }
+    rotatedText.style.top = "1.9em";
+    if (posHint == -1)
+      rotatedText.style.transform = "rotate(-90deg) translate(-100%, 0%)";
+    else if (posHint == 1)
+      rotatedText.style.transform = "translate(100%, 0%) rotate(-90deg) translate(-100%, -100%)";
+    else
+      rotatedText.style.transform = "translate(-50%, 0%) rotate(-90deg) translate(-100%, 50%)";
+    rotatedText.style.transformOrigin = "left top";
+    rotatedText.style.whiteSpace = "nowrap";
+    zeitstrahl2.appendChild(rotatedText);
+  }
+  createOverlayText(fplStart1, -1);
+  createOverlayText(fplEnde1, 1);
+  
+  /* Uhrzeit-Beschriftungen: */
+  {
+    let current = new Date(fplStart1);
+    const minutes = current.getMinutes();
+    var add = 30 - (minutes % 30);
+    if (add < 10)
+      add += 30;
+    current.setMinutes(minutes + add, 0, 0); /* round up to next half hour */
+    let endDrawingBoard = new Date(fplEnde1);
+    endDrawingBoard.setMinutes(endDrawingBoard.getMinutes() - 10);
+    while (current <= endDrawingBoard) {
+      createOverlayText(current, 0);
+      current.setMinutes(current.getMinutes() + 30);
+    }
+  }
+  
+  var dataRow = row2.nextElementSibling;
+  while(dataRow) {
+    var arrive1 = dataRow.querySelectorAll("td")[1].textContent.trim();
+    var depart1 = dataRow.querySelectorAll("td")[2].textContent.trim();
+    if ((arrive1 != "") && (depart1 != "")) {
+      var zugHaltStart1 = parseTimeString(arrive1);
+      var zugHaltEnde1 = parseTimeString(depart1);
+      createOverlayRect(zugHaltStart1, zugHaltEnde1, "Green");
+    }
+    dataRow = dataRow.nextElementSibling;
+  }
+</script>
+
+</body>
+</html>
